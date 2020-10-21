@@ -1,0 +1,3 @@
+person:
+  storage:
+    max-limit: ${STORAGE_MAX_VALUES:1000}
