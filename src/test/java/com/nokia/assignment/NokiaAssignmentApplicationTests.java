@@ -5,12 +5,15 @@ import com.nokia.assignment.model.Person;
 import com.nokia.assignment.service.PersonService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -95,23 +98,27 @@ class NokiaAssignmentApplicationTests {
 
     @Test
     void test_multithreadsAdding() throws Exception {
-        Thread t1 = new Thread(()-> {
-            for(int i=1 ; i<=100 ; i++) {
-                personService.addPerson(new Person(String.valueOf(i), "person-name"+i));
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        executor.submit(new Runnable() {
+            @Override
+            public void run() {
+                for(int i=1 ; i<=100 ; i++) {
+                    personService.addPerson(new Person(String.valueOf(i), "person-name"+i));
+                }
+            }
+        });
+        executor.submit(new Runnable() {
+            @Override
+            public void run() {
+                for(int i=1 ; i<=100 ; i++) {
+                    personService.addPerson(new Person(String.valueOf(100 + i), "person-name" + i));
+                }
             }
         });
 
-        Thread t2 = new Thread(()-> {
-            for(int i=1 ; i<=100 ; i++) {
-                personService.addPerson(new Person(String.valueOf(100+i), "person-name"+i));
-            }
-        });
-
-        t1.start();
-        t2.start();
-
-        t1.join();
-        t2.join();
+        executor.shutdown();
+        executor.awaitTermination(20, TimeUnit.SECONDS);
 
         for(int i=1 ; i<=100 ; i++) {
             assertEquals(personService.deletePersons("person-name"+i) , 2);
